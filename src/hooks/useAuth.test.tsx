@@ -1,19 +1,3 @@
-/**
- * Tests for the `useAuth` hook + `AuthProvider` (T5).
- *
- * Persistence contract (chosen by QA, must be matched by the developer):
- *   localStorage key: 'lm_admin_token'
- *   value: JSON.stringify({
- *     token: string,
- *     user: { login: string, role: 'admin' }
- *   })
- *
- *   - When a non-empty value exists at this key on mount, `useAuth`
- *     hydrates `token` and `role` from it.
- *   - On `logout()` the key is removed (localStorage.removeItem),
- *     so subsequent `localStorage.getItem('lm_admin_token')` returns null.
- */
-
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';

@@ -1,12 +1,3 @@
-/**
- * Tests for HomePage (T7).
- *
- * Smoke + key-behaviour layer:
- *  - heading "Популярные товары" renders
- *  - 8 product cards render when productsApi.list returns 8 items
- *  - 3 promo cards render when listPromos returns 3 promos
- */
-
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';

@@ -2,12 +2,6 @@ import { describe, it, expect } from 'vitest';
 import type { RouteObject } from 'react-router-dom';
 import { routes } from '@/router';
 
-/**
- * The router was wired in T7..T17. Real pages depend on many providers and
- * api modules, so the test now verifies that the routes table declares each
- * expected path (recursively) rather than rendering the pages directly.
- */
-
 const expectedPaths = [
   '/',
   '/catalog',

@@ -1,10 +1,3 @@
-/**
- * Tests for `<EmptyState>` (T6).
- *
- * Contract under test:
- *   - Renders the supplied `title` and `hint` text in the document.
- */
-
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 

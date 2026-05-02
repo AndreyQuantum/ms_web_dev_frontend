@@ -1,75 +1,69 @@
-# React + TypeScript + Vite
+# ms_web_dev_frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Фронтенд интернет-магазина: публичная витрина с каталогом, корзиной и оформлением заказа, а также административная панель для управления товарами, импортом и справочниками.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 19** + **TypeScript** + **Vite 8**
+- **React Router v6** — маршрутизация (публичные и защищённые админ-маршруты)
+- **React Compiler** (через `babel-plugin-react-compiler`) — автооптимизация ре-рендеров
+- **Vitest** + **Testing Library** + **jsdom** — модульные и интеграционные тесты
+- **ESLint** + **typescript-eslint** — линтинг
 
-## React Compiler
+## Скрипты
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev          # dev-сервер Vite с HMR
+npm run build        # тайпчек (tsc -b) + production-сборка
+npm run preview      # предпросмотр production-сборки
+npm run lint         # ESLint по всему проекту
+npm test             # запуск тестов один раз
+npm run test:watch   # тесты в watch-режиме
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Структура
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```
+src/
+├── api/          # клиенты REST API (auth, products, orders, reviews, dictionaries) + тесты
+├── components/   # переиспользуемые UI-компоненты (Button, Modal, Pagination, ProductCard, …)
+├── hooks/        # глобальные хуки (useAuth, useCart)
+├── layouts/      # PublicLayout, AdminLayout, MinimalLayout
+├── pages/        # страницы маршрутов (HomePage, CatalogPage, ProductPage, Admin*, …)
+├── mocks/        # моки для тестов и dev-окружения
+├── types/        # доменные типы (product, order, review, auth, dictionaries)
+├── utils/        # утилиты (format, …)
+├── styles/       # глобальные стили
+├── router.tsx    # конфигурация маршрутов
+└── main.tsx      # точка входа
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Маршрутизация
+
+- **Публичные** (`PublicLayout`): `/`, `/catalog`, `/product/:id`, `/about`, `/cart`, `/checkout`, `/order-success`
+- **Минимальный layout**: `/admin/login`
+- **Админ-зона** (`RequireAdmin` + `AdminLayout`): `/admin`, `/admin/products`, `/admin/import`, `/admin/dictionaries`
+
+## Документация
+
+В каталоге `docs/` находятся:
+
+- `postman_collection.json`, `postman_collection_demo.json` — коллекции Postman для API
+- `userflow/` — пользовательские сценарии
+- `БД ER диаграмма/` — ER-диаграмма базы данных
+- `архитектура микросервисов/` — схема микросервисной архитектуры
+- `прототипы/` — UI-прототипы
+- `страницы и права/` — матрица страниц и прав доступа
+- `схема c4/` — C4-модель архитектуры
+
+## Алиасы путей
+
+В коде используется алиас `@/` для `src/` (см. `vite.config.ts` и `tsconfig.app.json`).
+
+## Тестирование
+
+Тесты лежат рядом с исходниками (`*.test.ts` / `*.test.tsx`). Окружение — `jsdom`, утилиты — `@testing-library/react` и `@testing-library/user-event`. Запуск:
+
+```bash
+npm test
 ```

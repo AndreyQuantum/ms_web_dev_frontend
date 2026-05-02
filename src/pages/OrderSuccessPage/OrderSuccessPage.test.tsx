@@ -1,7 +1,3 @@
-/**
- * Tests for OrderSuccessPage (T12 cont.).
- */
-
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -28,15 +24,12 @@ describe('OrderSuccessPage', () => {
   });
 
   it('redirects to "/" when no router state is provided', () => {
-    // Use the real routes table so the home stub is reachable on redirect.
     const router = createMemoryRouter(routes, {
       initialEntries: [{ pathname: '/order-success' }],
     });
 
     render(<RouterProvider router={router} />);
 
-    // Either the home stub is in the document, or at minimum the success
-    // message must NOT be visible.
     expect(screen.queryByText(/Спасибо за заказ/i)).not.toBeInTheDocument();
   });
 });

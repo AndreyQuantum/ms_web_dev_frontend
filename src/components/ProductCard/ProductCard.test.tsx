@@ -1,17 +1,3 @@
-/**
- * Tests for `<ProductCard>` (T6).
- *
- * Contract under test:
- *   - Renders the product's `name` and `price`.
- *   - Out-of-stock product (inStock=false): the CTA is disabled and a badge
- *     containing "Нет в наличии" is rendered.
- *   - Clicking the CTA calls `onAddToCart`. The argument may be the product
- *     object OR the product id; this test is permissive — it accepts either.
- *     (Doc note: the developer should pick one and stay consistent.)
- *   - Renders the rating using `<Stars value={product.rating}>` — at least
- *     `Math.floor(product.rating)` stars must have data-filled="true".
- */
-
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -52,7 +38,6 @@ describe('<ProductCard>', () => {
   it("renders the product's name and price", () => {
     renderCard(baseProduct);
     expect(screen.getByText(baseProduct.name)).toBeInTheDocument();
-    // The numeric value of the price should be in the document somewhere.
     expect(
       screen.getByText((content) => content.includes('199'))
     ).toBeInTheDocument();

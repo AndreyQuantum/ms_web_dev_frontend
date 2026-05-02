@@ -1,22 +1,3 @@
-/**
- * Tests for `<AdminLayout>` (T6).
- *
- * Mounted with `<AuthProvider>` pre-seeded as admin (via localStorage key
- * `lm_admin_token`), inside a memory router with a stub child route.
- *
- * Persistence contract for `useAuth` (matches T5):
- *   localStorage key 'lm_admin_token' →
- *     JSON.stringify({ token: string, user: { login: string, role: 'admin' } })
- *
- * Contract under test:
- *   - Sidebar has links to `/admin` (Дашборд), `/admin/products` (Товары),
- *     `/admin/import` (Импорт), `/admin/dictionaries` (Справочники).
- *   - Logout button is present; clicking it clears auth (after click,
- *     `useAuth().role === null`).
- *   - Element data-testid="admin-sidebar" is in the document (sidebar exists).
- *   - The <Outlet /> renders the child route.
- */
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -29,8 +10,6 @@ const STORAGE_KEY = 'lm_admin_token';
 
 const ChildStub = () => <div data-testid="admin-child-stub">child</div>;
 
-// Probe component that reads useAuth().role — used to verify state after
-// clicking the logout button.
 const RoleProbe = () => {
   const { role } = useAuth();
   return <div data-testid="role-probe">{role ?? 'null'}</div>;

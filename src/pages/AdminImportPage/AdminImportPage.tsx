@@ -43,7 +43,6 @@ export function AdminImportPage() {
   };
 
   const handleImport = () => {
-    // Skeleton — full import flow lives in a later task.
     console.log('Import requested', { mapping, rows: rows.length });
   };
 

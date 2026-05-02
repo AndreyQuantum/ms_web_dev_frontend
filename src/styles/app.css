@@ -1,12 +1,3 @@
-/* =========================================================
-   ЛампоМаркет — application-wide visual layer.
-   This file styles all pre-existing class names used by the
-   pages, layouts, and shared components. Tests assert on
-   data-testid / role / text — never on class names — so
-   adding visual styling here is safe.
-   ========================================================= */
-
-/* ---------- Globals ---------- */
 html, body { min-height: 100%; }
 body {
   background: var(--lm-color-bg);
@@ -24,7 +15,6 @@ h3 { font-size: 18px; font-weight: 600; }
 h4 { font-size: 16px; font-weight: 600; }
 p  { margin: 0 0 var(--lm-space-3); }
 
-/* ---------- Layout helpers ---------- */
 .lm-container {
   max-width: var(--lm-container);
   margin: 0 auto;
@@ -32,9 +22,6 @@ p  { margin: 0 0 var(--lm-space-3); }
   width: 100%;
 }
 
-/* ============================================================
-   PUBLIC LAYOUT — header / nav / cart / footer
-   ============================================================ */
 .public-layout {
   display: flex;
   flex-direction: column;
@@ -159,9 +146,6 @@ p  { margin: 0 0 var(--lm-space-3); }
   .public-cart-label { display: none; }
 }
 
-/* ============================================================
-   ADMIN LAYOUT
-   ============================================================ */
 .admin-layout {
   display: flex;
   min-height: 100vh;
@@ -272,9 +256,6 @@ p  { margin: 0 0 var(--lm-space-3); }
   background: var(--lm-color-bg);
 }
 
-/* ============================================================
-   MINIMAL LAYOUT (login screen frame)
-   ============================================================ */
 .minimal-layout {
   flex: 1;
   display: flex;
@@ -293,9 +274,6 @@ p  { margin: 0 0 var(--lm-space-3); }
   padding: var(--lm-space-6);
 }
 
-/* ============================================================
-   BUTTONS — extend Button.module.css attribute selectors
-   ============================================================ */
 button[data-variant="primary"],
 button[data-variant="secondary"],
 button[data-variant="danger"],
@@ -325,9 +303,6 @@ button[data-variant="danger"]:hover:not(:disabled) {
   background: #B83C39;
 }
 
-/* ============================================================
-   FORM PRIMITIVES (inputs, labels, error state)
-   ============================================================ */
 .input-wrapper {
   display: flex;
   flex-direction: column;
@@ -367,7 +342,6 @@ textarea { min-height: 96px; resize: vertical; }
   margin-top: var(--lm-space-1);
 }
 
-/* Form rows used by checkout / admin login */
 .form-row {
   display: flex;
   flex-direction: column;
@@ -395,9 +369,6 @@ fieldset.form-row label {
   font-weight: 500;
 }
 
-/* ============================================================
-   STARS
-   ============================================================ */
 .stars {
   display: inline-flex;
   gap: 2px;
@@ -407,9 +378,6 @@ fieldset.form-row label {
 }
 .stars [data-filled="true"] { color: #F5B400; }
 
-/* ============================================================
-   CHIP
-   ============================================================ */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -431,9 +399,6 @@ fieldset.form-row label {
   color: #fff;
 }
 
-/* ============================================================
-   PAGINATION
-   ============================================================ */
 .pagination {
   display: flex;
   justify-content: center;
@@ -463,9 +428,6 @@ fieldset.form-row label {
 }
 .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ============================================================
-   BREADCRUMBS
-   ============================================================ */
 .breadcrumbs ol {
   list-style: none;
   margin: 0;
@@ -482,9 +444,6 @@ fieldset.form-row label {
 .breadcrumbs [aria-current="page"] { color: var(--lm-color-text); font-weight: 500; }
 .breadcrumbs-sep { margin: 0 var(--lm-space-2); color: var(--lm-color-border); }
 
-/* ============================================================
-   EMPTY STATE
-   ============================================================ */
 .empty-state {
   text-align: center;
   padding: var(--lm-space-6) var(--lm-space-5);
@@ -498,9 +457,6 @@ fieldset.form-row label {
 .empty-state-hint { color: var(--lm-color-muted); }
 .empty-state-action { margin-top: var(--lm-space-4); }
 
-/* ============================================================
-   MODAL
-   ============================================================ */
 .modal-root {
   position: fixed;
   inset: 0;
@@ -533,9 +489,6 @@ fieldset.form-row label {
 }
 .modal-body { display: block; }
 
-/* ============================================================
-   PRODUCT CARD
-   ============================================================ */
 .product-card {
   position: relative;
   background: var(--lm-color-surface);
@@ -671,9 +624,6 @@ fieldset.form-row label {
   border-radius: var(--lm-radius-sm);
 }
 
-/* ============================================================
-   HOMEPAGE
-   ============================================================ */
 .home-page {
   display: flex;
   flex-direction: column;
@@ -861,9 +811,6 @@ fieldset.form-row label {
   .home-popular-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ============================================================
-   CATALOG
-   ============================================================ */
 .catalog-page {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -1056,9 +1003,6 @@ fieldset.form-row label {
   .catalog-grid { grid-template-columns: 1fr; }
 }
 
-/* ============================================================
-   PRODUCT PAGE
-   ============================================================ */
 .product-page {
   max-width: var(--lm-container);
   margin: 0 auto;
@@ -1283,9 +1227,6 @@ fieldset.form-row label {
   .product-main { grid-template-columns: 1fr; }
 }
 
-/* ============================================================
-   ABOUT
-   ============================================================ */
 .about-page {
   max-width: 960px;
   margin: 0 auto;
@@ -1341,9 +1282,6 @@ fieldset.form-row label {
   .about-delivery-cards { grid-template-columns: 1fr; }
 }
 
-/* ============================================================
-   CART
-   ============================================================ */
 .cart-page {
   max-width: var(--lm-container);
   margin: 0 auto;
@@ -1458,9 +1396,6 @@ fieldset.form-row label {
   .cart-summary { position: static; }
 }
 
-/* ============================================================
-   CHECKOUT
-   ============================================================ */
 .checkout-page {
   max-width: var(--lm-container);
   margin: 0 auto;
@@ -1480,9 +1415,6 @@ fieldset.form-row label {
   font-size: 16px;
 }
 
-/* ============================================================
-   ORDER SUCCESS
-   ============================================================ */
 .order-success-page {
   max-width: 560px;
   margin: var(--lm-space-6) auto;
@@ -1524,9 +1456,6 @@ fieldset.form-row label {
 }
 .order-success-page a { display: inline-block; margin-top: var(--lm-space-4); }
 
-/* ============================================================
-   ADMIN LOGIN
-   ============================================================ */
 .admin-login-page {
   width: 100%;
 }
@@ -1558,9 +1487,6 @@ fieldset.form-row label {
   width: 100%;
 }
 
-/* ============================================================
-   ADMIN DASHBOARD
-   ============================================================ */
 .admin-dashboard-page > h1 {
   margin-bottom: var(--lm-space-5);
 }
@@ -1694,10 +1620,7 @@ fieldset.form-row label {
   .dashboard-kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ============================================================
-   ADMIN PRODUCTS
-   ============================================================ */
-.admin-products-page > h1 { display: none; } /* heading is in toolbar */
+.admin-products-page > h1 { display: none; }
 .admin-products-toolbar {
   display: flex;
   align-items: center;
@@ -1775,9 +1698,6 @@ fieldset.form-row label {
   .admin-product-form { grid-template-columns: 1fr; }
 }
 
-/* ============================================================
-   ADMIN IMPORT
-   ============================================================ */
 .admin-import-page > h1 { margin-bottom: var(--lm-space-5); }
 .import-dropzone {
   background: var(--lm-color-surface);
@@ -1839,9 +1759,6 @@ fieldset.form-row label {
   font-size: 14px;
 }
 
-/* ============================================================
-   ADMIN DICTIONARIES
-   ============================================================ */
 .admin-dictionaries-page > h1 { margin-bottom: var(--lm-space-5); }
 .dict-tabs {
   display: flex;

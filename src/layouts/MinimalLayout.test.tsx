@@ -1,12 +1,3 @@
-/**
- * Tests for `<MinimalLayout>` (T6).
- *
- * Contract under test:
- *   - Renders <Outlet /> child content.
- *   - Does NOT render an admin sidebar or a public footer (no chrome, just a
- *     centered content card for the login screen).
- */
-
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';

@@ -1,7 +1,3 @@
-/**
- * Tests for ProductPage (T9).
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -70,7 +66,6 @@ function buildRouter(initialPath: string = '/product/p-001') {
   );
 }
 
-// Helper component to expose cart state to the DOM for assertions.
 function CartSpy() {
   const { items } = useCart();
   return (

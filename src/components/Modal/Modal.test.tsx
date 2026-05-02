@@ -1,13 +1,3 @@
-/**
- * Tests for `<Modal>` (T6).
- *
- * Contract under test:
- *   - When `open={false}` no element with role="dialog" is rendered.
- *   - When `open={true}` a dialog with the supplied title is rendered.
- *   - Pressing the Escape key calls `onClose`.
- *   - Clicking the backdrop (data-testid="modal-backdrop") calls `onClose`.
- */
-
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

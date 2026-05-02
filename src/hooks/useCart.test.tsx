@@ -3,22 +3,6 @@ import type { ReactNode } from 'react';
 import { describe, it, expect } from 'vitest';
 import { CartProvider, useCart } from '@/hooks/useCart';
 
-/**
- * Math contract for derived totals (must match implementation):
- *
- *   For each cart item with productId P and quantity Q:
- *     product = getProduct(P)               // may be undefined
- *     unitPrice = product?.price ?? 0
- *     unitOld   = product?.oldPrice ?? unitPrice
- *
- *   subtotal = Σ unitPrice * Q                 // current price × qty
- *   discount = Σ max(0, unitOld - unitPrice) * Q
- *   total    = subtotal                        // subtotal already reflects the discounted price
- *
- * If `getProduct` is not provided (or returns undefined for an id),
- * that line contributes 0 to subtotal/discount/total.
- */
-
 const wrapper = ({ children }: { children: ReactNode }) => (
   <CartProvider>{children}</CartProvider>
 );
@@ -103,7 +87,6 @@ describe('useCart', () => {
 
     const stored = localStorage.getItem('lm_cart');
     if (stored !== null) {
-      // Empty serialized state form
       expect(JSON.parse(stored)).toEqual({ items: [] });
     } else {
       expect(stored).toBeNull();
@@ -122,7 +105,6 @@ describe('useCart', () => {
 
     const second = renderHook(() => useCart(), { wrapper });
 
-    // Order-independent comparison
     expect(second.result.current.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ productId: 'p-001', qty: 2 }),
@@ -162,7 +144,6 @@ describe('useCart', () => {
       result.current.addItem('p-001', 1);
     });
 
-    // subtotal uses current price; discount captures savings vs oldPrice
     expect(result.current.subtotal).toBe(100);
     expect(result.current.discount).toBe(50);
     expect(result.current.total).toBe(100);

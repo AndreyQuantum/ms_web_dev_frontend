@@ -28,7 +28,6 @@ function nextId(items: { id: number }[]): number {
 }
 
 export const dictionariesApi = {
-  // Categories
   async listCategories(): Promise<Category[]> {
     await delay();
     return categoriesStore.map((c) => ({ ...c }));
@@ -44,7 +43,6 @@ export const dictionariesApi = {
     categoriesStore = categoriesStore.filter((c) => c.id !== id);
   },
 
-  // Bulb Types
   async listBulbTypes(): Promise<BulbType[]> {
     await delay();
     return bulbTypesStore.map((c) => ({ ...c }));
@@ -60,7 +58,6 @@ export const dictionariesApi = {
     bulbTypesStore = bulbTypesStore.filter((c) => c.id !== id);
   },
 
-  // Shapes
   async listShapes(): Promise<BulbShape[]> {
     await delay();
     return shapesStore.map((c) => ({ ...c }));
@@ -76,7 +73,6 @@ export const dictionariesApi = {
     shapesStore = shapesStore.filter((c) => c.id !== id);
   },
 
-  // Sockets
   async listSockets(): Promise<Socket[]> {
     await delay();
     return socketsStore.map((c) => ({ ...c }));
@@ -92,7 +88,6 @@ export const dictionariesApi = {
     socketsStore = socketsStore.filter((c) => c.id !== id);
   },
 
-  // Suppliers
   async listSuppliers(): Promise<Supplier[]> {
     await delay();
     return suppliersStore.map((c) => ({ ...c }));
@@ -108,7 +103,6 @@ export const dictionariesApi = {
     suppliersStore = suppliersStore.filter((c) => c.id !== id);
   },
 
-  // Promos
   async listPromos(): Promise<Promo[]> {
     await delay();
     return promosStore.map((c) => ({ ...c }));

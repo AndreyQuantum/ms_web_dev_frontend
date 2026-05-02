@@ -1,18 +1,3 @@
-/**
- * Tests for `<RequireAdmin>` (T5).
- *
- * Persistence contract (must match `useAuth` from T5):
- *   localStorage key: 'lm_admin_token'
- *   value: JSON.stringify({
- *     token: string,
- *     user: { login: string, role: 'admin' }
- *   })
- *
- * Behaviour under test:
- *   - When unauthenticated, `<RequireAdmin>` renders <Navigate to="/admin/login" replace />.
- *   - When authenticated as role 'admin', it renders its children.
- */
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';

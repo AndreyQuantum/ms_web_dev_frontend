@@ -17,10 +17,6 @@ describe('_latency module', () => {
 
   it('setLatency mutates the latency reading', () => {
     setLatency(123);
-    // We import LATENCY by reference; some implementations export a getter.
-    // Either way the module must expose a way to read the current value.
-    // Re-import or read via setter is acceptable; we re-check with a separate
-    // call to delay() (with fake timers) to assert the actual delay used.
     setLatency(0);
   });
 
@@ -32,8 +28,6 @@ describe('_latency module', () => {
       resolved = true;
     });
 
-    // Microtask flush: with latency=0, delay() should resolve via
-    // Promise.resolve() (no real timer wait).
     await Promise.resolve();
     await Promise.resolve();
     await p;
@@ -50,8 +44,6 @@ describe('_latency module', () => {
       resolved = true;
     });
 
-    // Before timers advance, the promise should not have resolved yet.
-    // Yield microtasks so the .then() schedules.
     await Promise.resolve();
     expect(resolved).toBe(false);
 

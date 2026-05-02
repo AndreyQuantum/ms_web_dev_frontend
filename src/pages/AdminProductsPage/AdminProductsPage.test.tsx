@@ -1,7 +1,3 @@
-/**
- * Tests for AdminProductsPage (T15).
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -118,7 +114,6 @@ describe('AdminProductsPage', () => {
     await user.click(screen.getByRole('button', { name: /Создать товар/i }));
     const dialog = await screen.findByRole('dialog');
 
-    // submit the form without filling `name`
     const submit = within(dialog).getByRole('button', { name: /Сохранить|Создать/i });
     await user.click(submit);
 

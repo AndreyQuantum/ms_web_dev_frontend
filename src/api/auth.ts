@@ -20,5 +20,4 @@ export const authApi = {
   login: loginImpl,
 };
 
-// Defensive top-level export — some hooks/tests may import { login } directly.
 export const login = (payload: LoginPayload) => authApi.login(payload);

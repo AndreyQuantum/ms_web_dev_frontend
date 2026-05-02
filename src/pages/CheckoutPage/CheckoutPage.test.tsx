@@ -1,7 +1,3 @@
-/**
- * Tests for CheckoutPage (T12).
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -71,7 +67,6 @@ describe('CheckoutPage', () => {
     const submit = screen.getByRole('button', { name: /Оформить заказ/i });
     await user.click(submit);
 
-    // Validation error is rendered
     await waitFor(() => {
       expect(screen.getByText(/email/i)).toBeInTheDocument();
     });

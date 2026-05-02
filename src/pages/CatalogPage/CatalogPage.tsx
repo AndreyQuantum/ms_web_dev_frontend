@@ -46,7 +46,6 @@ export function CatalogPage() {
 
   const { addItem } = useCart();
 
-  // Load dictionaries once
   useEffect(() => {
     dictionariesApi.listCategories().then(setCategories).catch(() => {});
     dictionariesApi.listBulbTypes().then(setBulbTypes).catch(() => {});

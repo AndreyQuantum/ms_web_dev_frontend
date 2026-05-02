@@ -1,17 +1,3 @@
-/**
- * Tests for `<Button>` (T6).
- *
- * Contract under test:
- *   - Renders its children.
- *   - Calls `onClick` when clicked (and only when not disabled/loading).
- *   - `loading` prop:
- *       * the button element is `disabled`
- *       * an element with data-testid="button-spinner" is rendered inside
- *   - `disabled` prop disables the button.
- *   - `variant` prop maps to a `data-variant` attribute on the rendered button:
- *       'primary' | 'secondary' | 'ghost' | 'danger'.
- */
-
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

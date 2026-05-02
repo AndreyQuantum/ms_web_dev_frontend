@@ -1,14 +1,3 @@
-/**
- * Tests for `<Input>` (T6).
- *
- * Contract under test:
- *   - Renders an input with the supplied placeholder.
- *   - `onChange` fires for each typed character.
- *   - `error` prop renders the error message text in the document.
- *   - `label` prop renders an associated `<label>` whose `htmlFor` matches
- *      the input's `id` (auto-generated if not provided).
- */
-
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

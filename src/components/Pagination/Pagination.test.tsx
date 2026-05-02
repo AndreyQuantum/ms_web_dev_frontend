@@ -1,13 +1,3 @@
-/**
- * Tests for `<Pagination>` (T6).
- *
- * Contract under test:
- *   - Renders one element per page (page numbers visible as text).
- *   - Clicking the "next" arrow (aria-label="next") calls onChange(page+1).
- *   - Clicking the "prev" arrow (aria-label="prev") calls onChange(page-1).
- *   - On page 1 prev is disabled; on the last page next is disabled.
- */
-
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

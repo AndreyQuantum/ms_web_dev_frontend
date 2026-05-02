@@ -74,7 +74,6 @@ export function AdminDashboardPage() {
       qty: v.qty,
     }));
     all.sort((a, b) => b.qty - a.qty);
-    // pad to 5 if fewer top products available
     while (all.length < 5) {
       all.push({ productId: `placeholder-${all.length}`, name: '—', qty: 0 });
     }

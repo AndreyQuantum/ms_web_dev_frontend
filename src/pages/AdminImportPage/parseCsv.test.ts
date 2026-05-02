@@ -1,7 +1,3 @@
-/**
- * Unit tests for parseCsv util used by AdminImportPage (T16).
- */
-
 import { describe, it, expect } from 'vitest';
 import { parseCsv } from '@/pages/AdminImportPage/parseCsv';
 

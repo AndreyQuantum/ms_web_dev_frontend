@@ -1,13 +1,3 @@
-/**
- * Tests for CatalogPage (T8).
- *
- * Smoke + key behaviours:
- *   - on mount calls productsApi.list with { page: 1 }
- *   - typing "LED" + Enter triggers a call with search: 'LED'
- *   - clicking sort "Цена ↑" triggers a call with sort: 'priceAsc'
- *   - empty state "Ничего не найдено" appears when 0 items
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

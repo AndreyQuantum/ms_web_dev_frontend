@@ -118,7 +118,6 @@ export function CartProvider({ children, getProduct }: ProviderProps) {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useCart(): CartContextValue {
   const ctx = useContext(CartContext);
   if (!ctx) throw new Error('useCart must be used within CartProvider');

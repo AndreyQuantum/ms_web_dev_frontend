@@ -27,7 +27,6 @@ export function ProductPage() {
 
   useEffect(() => {
     if (!id) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate async fetch: reset error and load product when `id` changes
     setError(null);
     productsApi
       .getById(id)
