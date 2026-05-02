@@ -79,14 +79,16 @@ export function ProductPage() {
     <div className="product-page">
       <div className="product-main">
         <div className="product-gallery">
-          <img
-            className="product-gallery-main"
-            src={mainSrc}
-            alt={product.name}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
+          <div className="product-gallery-main-wrap">
+            <img
+              className="product-gallery-main"
+              src={mainSrc}
+              alt={product.name}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
           <div className="product-gallery-thumbs">
             {thumbs.map((src, i) => (
               <button
