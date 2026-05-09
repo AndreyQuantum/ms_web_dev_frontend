@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { RouteObject } from 'react-router-dom';
 import { routes } from '@/router';
 
@@ -33,6 +33,23 @@ function flatPaths(rs: RouteObject[], parent = ''): string[] {
 }
 
 describe('router', () => {
+  // Defensive: even though these tests do not render pages directly, importing
+  // `@/router` pulls in every page module. Stub fetch so that any incidental
+  // module-level work (or future render-based tests added here) cannot escape
+  // to the network.
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        '{"data":[],"meta":{"total":0,"page":1,"size":10}}',
+        { status: 200 },
+      ),
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('exports a routes array', () => {
     expect(Array.isArray(routes)).toBe(true);
     expect(routes.length).toBeGreaterThan(0);

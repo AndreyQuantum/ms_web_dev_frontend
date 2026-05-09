@@ -1,43 +1,31 @@
-import { delay } from './_latency';
-import { reviews as mockReviews } from '@/mocks';
+import { productsHttp } from './http';
+import {
+  toApiReview,
+  fromApiReview,
+  type ApiReviewRead,
+  type CreateReviewInput,
+} from './mappers/review';
 import type { Review } from '@/types';
 
-let store: Review[] = mockReviews.map((r) => ({ ...r }));
-
-export interface CreateReviewInput {
-  productId: string;
-  author: string;
-  rating: number;
-  text: string;
-}
-
-function genId(): string {
-  return (
-    'rev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7)
-  );
-}
+export type { CreateReviewInput } from './mappers/review';
 
 export const reviewsApi = {
   async listByProduct(productId: string): Promise<Review[]> {
-    await delay();
-    return store.filter((r) => r.productId === productId).map((r) => ({ ...r }));
+    const u = new URLSearchParams({ product_id: productId });
+    const r = await productsHttp<ApiReviewRead[]>(`/reviews?${u.toString()}`);
+    return r.map(fromApiReview);
   },
-
   async create(input: CreateReviewInput): Promise<Review> {
-    await delay();
-    const review: Review = {
-      id: genId(),
-      productId: input.productId,
-      author: input.author,
-      rating: input.rating,
-      text: input.text,
-      createdAt: new Date().toISOString(),
-    };
-    store.push(review);
-    return { ...review };
+    const body = toApiReview(input);
+    const r = await productsHttp<ApiReviewRead>(`/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return fromApiReview(r);
+  },
+  async remove(id: string): Promise<void> {
+    await productsHttp<void>(`/reviews/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
 };
-
-export function __resetForTests(): void {
-  store = mockReviews.map((r) => ({ ...r }));
-}

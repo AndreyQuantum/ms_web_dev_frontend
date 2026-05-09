@@ -1,14 +1,14 @@
-import { delay } from './_latency';
-import { orders as mockOrders } from '@/mocks';
-import type {
-  Customer,
-  DeliveryMethod,
-  Order,
-  OrderItem,
-  OrderStatus,
-} from '@/types';
+import { ordersHttp } from './http';
+import {
+  toApiOrder,
+  fromApiOrder,
+  statusToApi,
+  type ApiOrderRead,
+  type CreateOrderInput,
+} from './mappers/order';
+import type { Order, OrderStatus } from '@/types';
 
-let store: Order[] = mockOrders.map((o) => ({ ...o, items: [...o.items] }));
+export type { CreateOrderInput } from './mappers/order';
 
 export interface OrderListParams {
   page?: number;
@@ -16,65 +16,43 @@ export interface OrderListParams {
   status?: OrderStatus;
 }
 
-export interface CreateOrderInput {
-  customer: Customer;
-  deliveryMethod: DeliveryMethod;
-  items: OrderItem[];
-}
-
-function genId(): string {
-  return (
-    'ord-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)
-  );
-}
-
 export const ordersApi = {
+  async create(input: CreateOrderInput): Promise<Order> {
+    const body = toApiOrder(input);
+    const r = await ordersHttp<ApiOrderRead>(`/orders`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return fromApiOrder(r, input.items);
+  },
+
   async list(params: OrderListParams = {}): Promise<Order[]> {
-    await delay();
-    let result = store.slice();
-    if (params.status) {
-      result = result.filter((o) => o.status === params.status);
-    }
-    if (params.page !== undefined && params.size !== undefined) {
-      const start = (params.page - 1) * params.size;
-      result = result.slice(start, start + params.size);
-    }
-    return result.map((o) => ({ ...o, items: [...o.items] }));
+    const u = new URLSearchParams();
+    if (params.page !== undefined) u.set('page', String(params.page));
+    if (params.size !== undefined) u.set('size', String(params.size));
+    if (params.status !== undefined) u.set('status', statusToApi(params.status));
+    const q = u.toString();
+    const r = await ordersHttp<ApiOrderRead[]>(
+      `/orders${q ? '?' + q : ''}`,
+    );
+    return r.map((o) => fromApiOrder(o));
   },
 
   async getById(id: string): Promise<Order> {
-    await delay();
-    const found = store.find((o) => o.id === id);
-    if (!found) {
-      throw new Error(`Order not found: ${id}`);
-    }
-    return { ...found, items: [...found.items] };
+    const r = await ordersHttp<ApiOrderRead>(
+      `/orders/${encodeURIComponent(id)}`,
+    );
+    return fromApiOrder(r);
   },
 
-  async create(input: CreateOrderInput): Promise<Order> {
-    await delay();
-    const subtotal = input.items.reduce(
-      (acc, it) => acc + it.price * it.qty,
-      0,
+  async patchStatus(id: string, status: OrderStatus): Promise<Order> {
+    const r = await ordersHttp<ApiOrderRead>(
+      `/orders/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status: statusToApi(status) }),
+      },
     );
-    const discount = 0;
-    const total = subtotal - discount;
-    const order: Order = {
-      id: genId(),
-      customer: { ...input.customer },
-      deliveryMethod: input.deliveryMethod,
-      items: input.items.map((it) => ({ ...it })),
-      subtotal,
-      discount,
-      total,
-      status: 'new',
-      createdAt: new Date().toISOString(),
-    };
-    store.push(order);
-    return { ...order, items: [...order.items] };
+    return fromApiOrder(r);
   },
 };
-
-export function __resetForTests(): void {
-  store = mockOrders.map((o) => ({ ...o, items: [...o.items] }));
-}

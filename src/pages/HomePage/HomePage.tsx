@@ -1,29 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productsApi } from '@/api/products';
-import { dictionariesApi } from '@/api/dictionaries';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchProducts, fetchDictionaries } from '@/store/slices/productsSlice';
 import { ProductCard } from '@/components/ProductCard/ProductCard';
 import { useCart } from '@/hooks/useCart';
-import type { Product, Promo } from '@/types';
 
 export function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [promos, setPromos] = useState<Promo[]>([]);
+  const dispatch = useAppDispatch();
   const { addItem } = useCart();
+  const { list, listStatus, listError, dictionaries } = useAppSelector(
+    (s) => s.products,
+  );
+  const promos = dictionaries.promos;
 
   useEffect(() => {
-    productsApi
-      .list({ sort: 'popular', size: 8, page: 1 })
-      .then(res => setProducts(res.items))
-      .catch(() => setProducts([]));
-  }, []);
-
-  useEffect(() => {
-    dictionariesApi
-      .listPromos()
-      .then(res => setPromos(res))
-      .catch(() => setPromos([]));
-  }, []);
+    dispatch(fetchProducts({ size: 8 }));
+    dispatch(fetchDictionaries());
+  }, [dispatch]);
 
   return (
     <div className="home-page">
@@ -39,7 +32,7 @@ export function HomePage() {
 
       <section className="home-promos">
         <div className="home-promos-row">
-          {promos.map(p => (
+          {promos.map((p) => (
             <div key={p.id} data-testid="promo-card" className="promo-card">
               <h3>{p.name}</h3>
               <p>Скидка {p.discountPercent}%</p>
@@ -50,15 +43,32 @@ export function HomePage() {
 
       <section className="home-popular">
         <h2>Популярные товары</h2>
-        <div className="home-popular-grid">
-          {products.map(p => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              onAddToCart={() => addItem(p.id, 1)}
-            />
-          ))}
-        </div>
+        {listStatus === 'loading' ? (
+          <div className="home-popular-loading" data-testid="home-popular-loading">
+            Загрузка...
+          </div>
+        ) : listStatus === 'error' ? (
+          <div className="home-popular-error" data-testid="home-popular-error">
+            Ошибка загрузки товаров{listError ? `: ${listError}` : ''}
+          </div>
+        ) : (
+          <div className="home-popular-grid">
+            {list.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                onAddToCart={() =>
+                  addItem(p.id, 1, {
+                    name: p.name,
+                    price: p.price,
+                    oldPrice: p.oldPrice,
+                    imageUrl: p.imageUrl,
+                  })
+                }
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="home-benefits">

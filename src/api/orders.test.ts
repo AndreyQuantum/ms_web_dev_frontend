@@ -1,80 +1,119 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { ordersApi } from '@/api/orders';
-import { setLatency } from '@/api/_latency';
-import type { Customer, DeliveryMethod, OrderItem } from '@/types';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { ordersApi } from './orders';
+import { mockFetchOnce, getFetchMock, resetFetchMock } from '@/test/fetchMock';
 
-const sampleCustomer: Customer = {
-  email: 'qa@example.com',
-  phone: '+79991234567',
-  comment: 'Test order',
-};
-
-const sampleItems: OrderItem[] = [
-  { productId: 'p-001', name: 'LED Лампа E27 10W 800лм', price: 199, qty: 2 },
-  { productId: 'p-008', name: 'LED Лампа E27 15W 1500лм', price: 399, qty: 1 },
-];
-
-const samplePayload = {
-  customer: sampleCustomer,
-  deliveryMethod: 'courier' as DeliveryMethod,
-  items: sampleItems,
-};
+beforeEach(() => resetFetchMock());
+afterEach(() => resetFetchMock());
 
 describe('ordersApi.create', () => {
-  beforeEach(() => {
-    setLatency(0);
-  });
-
-  it('returns an Order with status="new", non-empty id, and items echoed', async () => {
-    const order = await ordersApi.create(samplePayload);
-    expect(order.status).toBe('new');
-    expect(typeof order.id).toBe('string');
-    expect(order.id.length).toBeGreaterThan(0);
-    expect(order.items.length).toBe(sampleItems.length);
-    for (let i = 0; i < sampleItems.length; i++) {
-      expect(order.items[i].productId).toBe(sampleItems[i].productId);
-      expect(order.items[i].qty).toBe(sampleItems[i].qty);
-      expect(order.items[i].price).toBe(sampleItems[i].price);
-    }
-  });
-
-  it('computes subtotal/discount/total (subtotal = sum(price*qty), total > 0)', async () => {
-    const order = await ordersApi.create(samplePayload);
-
-    const expectedSubtotal = sampleItems.reduce(
-      (acc, it) => acc + it.price * it.qty,
-      0,
-    );
-    expect(order.subtotal).toBe(expectedSubtotal);
-    expect(typeof order.discount).toBe('number');
-    expect(order.discount).toBeGreaterThanOrEqual(0);
-    expect(order.total).toBe(order.subtotal - order.discount);
-    expect(order.total).toBeGreaterThan(0);
+  it('POSTs with client_email/client_phone/folded comment/items mapped', async () => {
+    const apiOrder = {
+      id: 'o1',
+      client_email: 'a@b',
+      client_phone: '+7',
+      comment: 'Доставка: курьер\n\nnote',
+      status: 'NEW',
+      items: [
+        {
+          id: 'i1',
+          product_id: 'p1',
+          quantity: 2,
+          current_price: '9.99',
+          created_at: '…',
+        },
+      ],
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    mockFetchOnce(apiOrder);
+    const result = await ordersApi.create({
+      email: 'a@b',
+      phone: '+7',
+      deliveryMethod: 'курьер',
+      comment: 'note',
+      items: [{ productId: 'p1', qty: 2, price: 9.99, name: 'X' }],
+    });
+    const calls = getFetchMock().mock.calls as unknown as Array<
+      [string, RequestInit]
+    >;
+    const [url, init] = calls[0];
+    expect(url).toContain('/orders');
+    expect(init.method).toBe('POST');
+    const body = JSON.parse(init.body as string);
+    expect(body.client_email).toBe('a@b');
+    expect(body.client_phone).toBe('+7');
+    expect(body.comment).toBe('Доставка: курьер\n\nnote');
+    expect(body.items).toEqual([{ product_id: 'p1', quantity: 2 }]);
+    expect(result.status).toBe('new');
   });
 });
 
-describe('ordersApi.list / getById', () => {
-  beforeEach(() => {
-    setLatency(0);
+describe('ordersApi.patchStatus', () => {
+  it('PATCH /orders/{id} maps shipped → IN_PROGRESS', async () => {
+    mockFetchOnce({
+      id: 'o1',
+      client_email: '',
+      client_phone: '',
+      comment: null,
+      status: 'IN_PROGRESS',
+      items: [],
+      created_at: '…',
+    });
+    await ordersApi.patchStatus('o1', 'shipped');
+    const calls = getFetchMock().mock.calls as unknown as Array<
+      [string, RequestInit]
+    >;
+    const [url, init] = calls[0];
+    expect(url).toContain('/orders/o1');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toEqual({ status: 'IN_PROGRESS' });
   });
 
-  it('list returns an array including a just-created order', async () => {
-    const created = await ordersApi.create(samplePayload);
-    const all = await ordersApi.list();
-    expect(Array.isArray(all)).toBe(true);
-    expect(all.some((o) => o.id === created.id)).toBe(true);
+  it('maps delivered → DELIVERED', async () => {
+    mockFetchOnce({
+      id: 'o1',
+      client_email: '',
+      client_phone: '',
+      comment: null,
+      status: 'DELIVERED',
+      items: [],
+      created_at: '…',
+    });
+    await ordersApi.patchStatus('o1', 'delivered');
+    const calls = getFetchMock().mock.calls as unknown as Array<
+      [string, RequestInit]
+    >;
+    const init = calls[0][1];
+    expect(JSON.parse(init.body as string)).toEqual({ status: 'DELIVERED' });
   });
+});
 
-  it('getById returns the matching order for an existing id', async () => {
-    const created = await ordersApi.create(samplePayload);
-    const got = await ordersApi.getById(created.id);
-    expect(got.id).toBe(created.id);
-    expect(got.customer.email).toBe(sampleCustomer.email);
+describe('ordersApi.list', () => {
+  it('GETs /orders?page=&size=&status=', async () => {
+    mockFetchOnce([]);
+    await ordersApi.list({ page: 2, size: 20, status: 'new' });
+    const calls = getFetchMock().mock.calls as unknown as Array<
+      [string, RequestInit]
+    >;
+    const url = calls[0][0];
+    expect(url).toContain('page=2');
+    expect(url).toContain('size=20');
+    expect(url).toContain('status=NEW');
   });
+});
 
-  it('getById rejects for a missing id', async () => {
-    await expect(ordersApi.getById('o-does-not-exist')).rejects.toBeInstanceOf(
-      Error,
-    );
+describe('ordersApi.getById', () => {
+  it('GETs /orders/{id} and returns mapped order', async () => {
+    mockFetchOnce({
+      id: 'o1',
+      client_email: 'a@b',
+      client_phone: '+7',
+      comment: null,
+      status: 'IN_PROGRESS',
+      items: [],
+      created_at: '…',
+    });
+    const o = await ordersApi.getById('o1');
+    expect(o.status).toBe('processing');
+    expect(o.id).toBe('o1');
   });
 });

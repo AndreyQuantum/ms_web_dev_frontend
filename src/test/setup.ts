@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { resetFetchMock } from './fetchMock';
 
 const OrigRequest = globalThis.Request;
 class PatchedRequest extends OrigRequest {
@@ -27,4 +28,5 @@ globalThis.Request = PatchedRequest;
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  resetFetchMock();
 });

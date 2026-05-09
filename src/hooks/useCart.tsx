@@ -1,125 +1,115 @@
+import { useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+  addItem as addItemAction,
+  removeItem as removeItemAction,
+  setQty as setQtyAction,
+  clear as clearAction,
+  selectCartItems,
+  selectCartItemCount,
+  selectCartSubtotal,
+  selectCartDiscount,
+  selectCartTotal,
+} from '@/store/slices/cartSlice';
+import type { CartItem as SliceCartItem } from '@/store/slices/cartSlice';
 
-export interface CartItem {
-  productId: string;
-  qty: number;
-}
-
-export interface ProductLookup {
+export interface CartItemSnapshot {
+  name: string;
   price: number;
   oldPrice?: number;
-  name?: string;
   imageUrl?: string;
 }
 
+// Re-export the slice CartItem shape so consumers can keep using `CartItem`
+export type CartItem = SliceCartItem;
+
 export interface CartContextValue {
-  items: CartItem[];
+  items: SliceCartItem[];
   itemCount: number;
   subtotal: number;
   discount: number;
   total: number;
-  addItem: (productId: string, qty?: number) => void;
+  addItem: (
+    productId: string,
+    qty?: number,
+    snapshot?: CartItemSnapshot,
+  ) => void;
   removeItem: (productId: string) => void;
   setQty: (productId: string, qty: number) => void;
   clear: () => void;
-  getProduct: (productId: string) => ProductLookup | undefined;
+  getProduct: (productId: string) => CartItemSnapshot | undefined;
 }
 
-const STORAGE_KEY = 'lm_cart';
-const CartContext = createContext<CartContextValue | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export function useCart(): CartContextValue {
+  const dispatch = useAppDispatch();
+  const items = useAppSelector(selectCartItems);
+  const itemCount = useAppSelector(selectCartItemCount);
+  const subtotal = useAppSelector(selectCartSubtotal);
+  const discount = useAppSelector(selectCartDiscount);
+  const total = useAppSelector(selectCartTotal);
 
-function readPersisted(): CartItem[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as { items?: CartItem[] };
-    return Array.isArray(parsed?.items) ? parsed.items.filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
-function persist(items: CartItem[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ items }));
-}
-
-interface ProviderProps {
-  children: ReactNode;
-  getProduct?: (productId: string) => ProductLookup | undefined;
-}
-
-export function CartProvider({ children, getProduct }: ProviderProps) {
-  const [items, setItems] = useState<CartItem[]>(() => readPersisted());
-
-  useEffect(() => {
-    persist(items);
-  }, [items]);
-
-  const addItem = (productId: string, qty: number = 1) => {
-    setItems(prev => {
-      const existing = prev.find(i => i.productId === productId);
-      if (existing) {
-        return prev.map(i =>
-          i.productId === productId ? { ...i, qty: i.qty + qty } : i,
+  const addItem = useCallback(
+    (productId: string, qty: number = 1, snapshot?: CartItemSnapshot) => {
+      if (!snapshot) {
+        console.warn(
+          '[useCart] addItem called without snapshot — totals will be 0 for this line',
         );
       }
-      return [...prev, { productId, qty }];
-    });
-  };
+      dispatch(
+        addItemAction({
+          productId,
+          qty,
+          snapshot: snapshot ?? { name: '', price: 0 },
+        }),
+      );
+    },
+    [dispatch],
+  );
 
-  const removeItem = (productId: string) => {
-    setItems(prev => prev.filter(i => i.productId !== productId));
-  };
+  const removeItem = useCallback(
+    (productId: string) => {
+      dispatch(removeItemAction({ productId }));
+    },
+    [dispatch],
+  );
 
-  const setQty = (productId: string, qty: number) => {
-    if (qty <= 0) {
-      removeItem(productId);
-      return;
-    }
-    setItems(prev =>
-      prev.map(i => (i.productId === productId ? { ...i, qty } : i)),
-    );
-  };
+  const setQtyCb = useCallback(
+    (productId: string, qty: number) => {
+      dispatch(setQtyAction({ productId, qty }));
+    },
+    [dispatch],
+  );
 
-  const clear = () => setItems([]);
+  const clear = useCallback(() => {
+    dispatch(clearAction());
+  }, [dispatch]);
 
-  const totals = useMemo(() => {
-    let subtotal = 0;
-    let discount = 0;
-    for (const item of items) {
-      const p = getProduct?.(item.productId);
-      if (!p) continue;
-      subtotal += p.price * item.qty;
-      if (p.oldPrice && p.oldPrice > p.price) {
-        discount += (p.oldPrice - p.price) * item.qty;
-      }
-    }
-    return { subtotal, discount, total: subtotal };
-  }, [items, getProduct]);
+  const getProduct = useCallback(
+    (productId: string): CartItemSnapshot | undefined => {
+      const line = items.find((it) => it.productId === productId);
+      return line?.snapshot;
+    },
+    [items],
+  );
 
-  const value: CartContextValue = {
+  return {
     items,
-    itemCount: items.reduce((acc, i) => acc + i.qty, 0),
+    itemCount,
+    subtotal,
+    discount,
+    total,
     addItem,
     removeItem,
-    setQty,
+    setQty: setQtyCb,
     clear,
-    getProduct: (id: string) => getProduct?.(id),
-    ...totals,
+    getProduct,
   };
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-export function useCart(): CartContextValue {
-  const ctx = useContext(CartContext);
-  if (!ctx) throw new Error('useCart must be used within CartProvider');
-  return ctx;
+// No-op CartProvider preserved for back-compat with any leftover imports.
+// The real state now lives in the Redux store wired up via <Provider> in main.tsx.
+export function CartProvider({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }
