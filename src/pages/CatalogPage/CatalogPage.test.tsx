@@ -1,128 +1,295 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-
-vi.mock('@/api/products', () => ({
-  productsApi: {
-    list: vi.fn(),
-    getById: vi.fn(),
-  },
-}));
-
-vi.mock('@/api/dictionaries', () => ({
-  dictionariesApi: {
-    listCategories: vi.fn().mockResolvedValue([]),
-    listBulbTypes: vi.fn().mockResolvedValue([]),
-    listShapes: vi.fn().mockResolvedValue([]),
-    listSockets: vi.fn().mockResolvedValue([]),
-    listSuppliers: vi.fn().mockResolvedValue([]),
-    listPromos: vi.fn().mockResolvedValue([]),
-  },
-}));
-
-import { productsApi } from '@/api/products';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { MemoryRouter } from 'react-router-dom';
+import { makeStore } from '@/store';
 import { CatalogPage } from '@/pages/CatalogPage/CatalogPage';
-import { CartProvider } from '@/hooks/useCart';
 
-const okResponse = (n: number = 0) => ({
-  items: Array.from({ length: n }, (_, i) => ({
-    id: `p-${i}`,
-    name: `Lamp ${i}`,
-    description: 'd',
-    price: 100,
-    brightnessLm: 800,
-    rating: 4,
-    reviewsCount: 1,
-    inStock: true,
-    stockQty: 1,
-    isArchived: false,
-    categoryId: 1,
-    bulbTypeId: 1,
-    bulbShapeId: 1,
-    socketId: 1,
-    supplierId: 1,
-    imageUrl: '/x.png',
-    createdAt: '2026-04-01T00:00:00.000Z',
-    popularity: 1,
-  })),
-  page: 1,
-  size: 12,
-  total: n,
-});
+// --- helpers --------------------------------------------------------------
 
-function buildRouter() {
-  return createMemoryRouter(
-    [
-      {
-        path: '/catalog',
-        element: (
-          <CartProvider>
-            <CatalogPage />
-          </CartProvider>
-        ),
-      },
-    ],
-    { initialEntries: ['/catalog'] },
-  );
+function makeApiProduct(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'u1',
+    title: 'Lamp 1',
+    description: '',
+    price: '10.00',
+    quantity: 5,
+    brightness_lm: 800,
+    is_archived: false,
+    available_from: null,
+    category_id: 1,
+    bulb_type_id: 1,
+    bulb_shape_id: 1,
+    socket_id: 1,
+    supplier_id: 1,
+    promo_id: null,
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
 }
 
+function productsResponseBody(
+  items: ReturnType<typeof makeApiProduct>[],
+  page = 1,
+  size = 12,
+  total?: number,
+) {
+  return {
+    data: items,
+    meta: { total: total ?? items.length, page, size },
+  };
+}
+
+// vitest's default `ReturnType<typeof vi.spyOn>` has an unknown signature
+// shape; the actual fetch spy carries the real fetch overload signature.
+// Use a wider mock-like type so we can assign without TS complaining.
+type FetchSpy = {
+  mockRestore: () => void;
+  mock: { calls: unknown[][] };
+};
+let fetchSpy: FetchSpy | null = null;
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => (body == null ? '' : JSON.stringify(body)),
+    headers: new Headers(),
+  } as unknown as Response;
+}
+
+interface RouteMap {
+  productsList?: unknown;
+  productsListImpl?: (url: string) => unknown;
+  categories?: unknown;
+  bulbTypes?: unknown;
+  bulbShapes?: unknown;
+  sockets?: unknown;
+  suppliers?: unknown;
+  promos?: unknown;
+}
+
+function setupRoutedFetch(routes: RouteMap): FetchSpy {
+  fetchSpy = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation((input: RequestInfo | URL) => {
+      const url = String(
+        typeof input === 'string' || input instanceof URL ? input : input.url,
+      );
+      // IMPORTANT: dictionary endpoints (e.g. /api/products/categories) ALSO contain
+      // the substring "/products". Match the more-specific dict paths first.
+      if (url.includes('/categories'))
+        return Promise.resolve(jsonResponse(routes.categories ?? []));
+      if (url.includes('/bulb-types'))
+        return Promise.resolve(jsonResponse(routes.bulbTypes ?? []));
+      if (url.includes('/bulb-shapes'))
+        return Promise.resolve(jsonResponse(routes.bulbShapes ?? []));
+      if (url.includes('/sockets'))
+        return Promise.resolve(jsonResponse(routes.sockets ?? []));
+      if (url.includes('/suppliers'))
+        return Promise.resolve(jsonResponse(routes.suppliers ?? []));
+      if (url.includes('/promos'))
+        return Promise.resolve(jsonResponse(routes.promos ?? []));
+      // Anything else under /products goes to the products list.
+      if (url.includes('/products')) {
+        const body = routes.productsListImpl
+          ? routes.productsListImpl(url)
+          : (routes.productsList ?? productsResponseBody([]));
+        return Promise.resolve(jsonResponse(body));
+      }
+      return Promise.resolve(jsonResponse({}, 404));
+    }) as unknown as FetchSpy;
+  return fetchSpy;
+}
+
+function getFetchMock(): FetchSpy {
+  if (!fetchSpy) {
+    throw new Error('fetch spy not initialised — call setupRoutedFetch first');
+  }
+  return fetchSpy;
+}
+
+function renderCatalog() {
+  const store = makeStore();
+  const utils = render(
+    <Provider store={store}>
+      <MemoryRouter>
+        <CatalogPage />
+      </MemoryRouter>
+    </Provider>,
+  );
+  return { ...utils, store };
+}
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+afterEach(() => {
+  if (fetchSpy) {
+    fetchSpy.mockRestore();
+    fetchSpy = null;
+  }
+});
+
+// --- tests ----------------------------------------------------------------
+
 describe('CatalogPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('calls productsApi.list with { page: 1 } on mount', async () => {
-    (productsApi.list as ReturnType<typeof vi.fn>).mockResolvedValue(okResponse(1));
-
-    render(<RouterProvider router={buildRouter()} />);
-
-    await waitFor(() => {
-      expect(productsApi.list).toHaveBeenCalled();
+  it('on mount fetches /products with page=1 and dispatches all dictionary fetches', async () => {
+    const spy = setupRoutedFetch({
+      productsList: productsResponseBody([
+        makeApiProduct({ id: 'u1', title: 'Alpha' }),
+      ]),
     });
 
-    const firstCall = (productsApi.list as ReturnType<typeof vi.fn>).mock.calls[0][0] ?? {};
-    expect(firstCall.page).toBe(1);
-  });
-
-  it('typing "LED" in search and pressing Enter triggers a call with search: "LED"', async () => {
-    (productsApi.list as ReturnType<typeof vi.fn>).mockResolvedValue(okResponse(1));
-    const user = userEvent.setup();
-
-    render(<RouterProvider router={buildRouter()} />);
-
-    const input = await screen.findByRole('searchbox');
-    await user.type(input, 'LED{Enter}');
+    renderCatalog();
 
     await waitFor(() => {
-      const calls = (productsApi.list as ReturnType<typeof vi.fn>).mock.calls;
-      expect(
-        calls.some(([params]) => params?.search === 'LED'),
-      ).toBe(true);
+      expect(screen.getByText('Alpha')).toBeInTheDocument();
+    });
+
+    const calledUrls = spy.mock.calls.map((c) => String(c[0]));
+    // The products list call should include page=1.
+    expect(
+      calledUrls.some(
+        (u) =>
+          u.includes('/products') &&
+          !u.includes('/categories') &&
+          !u.includes('/bulb-types') &&
+          !u.includes('/bulb-shapes') &&
+          !u.includes('/sockets') &&
+          !u.includes('/suppliers') &&
+          !u.includes('/promos') &&
+          u.includes('page=1'),
+      ),
+    ).toBe(true);
+    expect(calledUrls.some((u) => u.includes('/categories'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('/bulb-types'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('/bulb-shapes'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('/sockets'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('/suppliers'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('/promos'))).toBe(true);
+  });
+
+  it('changing the category filter re-fetches /products with category_id=2 in URL', async () => {
+    const spy = setupRoutedFetch({
+      productsList: productsResponseBody([
+        makeApiProduct({ id: 'u1', title: 'Alpha' }),
+      ]),
+      categories: [
+        { id: 1, name: 'One' },
+        { id: 2, name: 'Two' },
+      ],
+    });
+
+    renderCatalog();
+
+    await waitFor(() => {
+      expect(screen.getByText('Alpha')).toBeInTheDocument();
+    });
+
+    // Wait for the dictionaries fetch to populate the <select> with category options.
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Two' })).toBeInTheDocument();
+    });
+
+    const select = screen.getByRole('combobox', { name: /Категория/i });
+    fireEvent.change(select, { target: { value: '2' } });
+
+    await waitFor(() => {
+      const productCalls = spy.mock.calls
+        .map((c) => String(c[0]))
+        .filter(
+          (u) =>
+            u.includes('/products') &&
+            !u.includes('/categories') &&
+            !u.includes('/bulb-types') &&
+            !u.includes('/bulb-shapes') &&
+            !u.includes('/sockets') &&
+            !u.includes('/suppliers') &&
+            !u.includes('/promos'),
+        );
+      expect(productCalls.some((u) => u.includes('category_id=2'))).toBe(true);
     });
   });
 
-  it('clicking "Цена ↑" sort button triggers a call with sort: "priceAsc"', async () => {
-    (productsApi.list as ReturnType<typeof vi.fn>).mockResolvedValue(okResponse(1));
-    const user = userEvent.setup();
+  it('typing "alp" in search filters loaded items client-side WITHOUT a new fetch', async () => {
+    setupRoutedFetch({
+      productsList: productsResponseBody([
+        makeApiProduct({ id: 'u1', title: 'Alpha' }),
+        makeApiProduct({ id: 'u2', title: 'Beta' }),
+        makeApiProduct({ id: 'u3', title: 'Gamma' }),
+      ]),
+    });
 
-    render(<RouterProvider router={buildRouter()} />);
-
-    const btn = await screen.findByRole('button', { name: /Цена ↑/ });
-    await user.click(btn);
+    renderCatalog();
 
     await waitFor(() => {
-      const calls = (productsApi.list as ReturnType<typeof vi.fn>).mock.calls;
-      expect(
-        calls.some(([params]) => params?.sort === 'priceAsc'),
-      ).toBe(true);
+      expect(screen.getByText('Alpha')).toBeInTheDocument();
+      expect(screen.getByText('Beta')).toBeInTheDocument();
+      expect(screen.getByText('Gamma')).toBeInTheDocument();
+    });
+
+    const fetchCallsBefore = getFetchMock().mock.calls.length;
+
+    const input = screen.getByPlaceholderText(/поиск/i);
+    fireEvent.change(input, { target: { value: 'alp' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+      expect(screen.queryByText('Gamma')).not.toBeInTheDocument();
+      expect(screen.getByText('Alpha')).toBeInTheDocument();
+    });
+
+    expect(getFetchMock().mock.calls.length).toBe(fetchCallsBefore);
+  });
+
+  it('clicking next page re-fetches /products with page=2', async () => {
+    // Server returns 24 items total so totalPages = ceil(24 / 12) = 2.
+    const items = Array.from({ length: 12 }, (_, i) =>
+      makeApiProduct({ id: `u${i + 1}`, title: `Lamp ${i + 1}` }),
+    );
+
+    const spy = setupRoutedFetch({
+      productsListImpl: (url) => ({
+        data: items,
+        meta: { total: 24, page: url.includes('page=2') ? 2 : 1, size: 12 },
+      }),
+    });
+
+    renderCatalog();
+
+    await waitFor(() => {
+      expect(screen.getByText('Lamp 1')).toBeInTheDocument();
+    });
+
+    const nextBtn = screen.getByRole('button', { name: /next/i });
+    fireEvent.click(nextBtn);
+
+    await waitFor(() => {
+      const productCalls = spy.mock.calls
+        .map((c) => String(c[0]))
+        .filter(
+          (u) =>
+            u.includes('/products') &&
+            !u.includes('/categories') &&
+            !u.includes('/bulb-types') &&
+            !u.includes('/bulb-shapes') &&
+            !u.includes('/sockets') &&
+            !u.includes('/suppliers') &&
+            !u.includes('/promos'),
+        );
+      expect(productCalls.some((u) => u.includes('page=2'))).toBe(true);
     });
   });
 
-  it('shows "Ничего не найдено" when productsApi.list returns 0 items', async () => {
-    (productsApi.list as ReturnType<typeof vi.fn>).mockResolvedValue(okResponse(0));
+  it('shows "Ничего не найдено" when /products returns 0 items', async () => {
+    setupRoutedFetch({
+      productsList: productsResponseBody([], 1, 12, 0),
+    });
 
-    render(<RouterProvider router={buildRouter()} />);
+    renderCatalog();
 
     await waitFor(() => {
       expect(screen.getByText(/Ничего не найдено/i)).toBeInTheDocument();

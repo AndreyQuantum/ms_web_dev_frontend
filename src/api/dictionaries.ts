@@ -1,12 +1,17 @@
-import { delay } from './_latency';
+import { productsHttp } from './http';
 import {
-  categories as mockCategories,
-  bulbTypes as mockBulbTypes,
-  bulbShapes as mockBulbShapes,
-  sockets as mockSockets,
-  suppliers as mockSuppliers,
-  promos as mockPromos,
-} from '@/mocks';
+  fromApiCategory,
+  fromApiBulbType,
+  fromApiBulbShape,
+  fromApiSocket,
+  fromApiSupplier,
+  fromApiPromo,
+  toApiNamed,
+  toApiPromo,
+  type ApiNamed,
+  type ApiPromo,
+  type CreatePromoInput,
+} from './mappers/dictionaries';
 import type {
   BulbShape,
   BulbType,
@@ -16,119 +21,76 @@ import type {
   Supplier,
 } from '@/types';
 
-let categoriesStore: Category[] = mockCategories.map((c) => ({ ...c }));
-let bulbTypesStore: BulbType[] = mockBulbTypes.map((c) => ({ ...c }));
-let shapesStore: BulbShape[] = mockBulbShapes.map((c) => ({ ...c }));
-let socketsStore: Socket[] = mockSockets.map((c) => ({ ...c }));
-let suppliersStore: Supplier[] = mockSuppliers.map((c) => ({ ...c }));
-let promosStore: Promo[] = mockPromos.map((c) => ({ ...c }));
-
-function nextId(items: { id: number }[]): number {
-  return items.reduce((max, it) => (it.id > max ? it.id : max), 0) + 1;
-}
+const j = (body: unknown) => ({
+  method: 'POST' as const,
+  body: JSON.stringify(body),
+});
+const del = { method: 'DELETE' as const };
 
 export const dictionariesApi = {
-  async listCategories(): Promise<Category[]> {
-    await delay();
-    return categoriesStore.map((c) => ({ ...c }));
-  },
-  async createCategory({ name }: { name: string }): Promise<Category> {
-    await delay();
-    const created: Category = { id: nextId(categoriesStore), name };
-    categoriesStore.push(created);
-    return { ...created };
-  },
-  async deleteCategory(id: number): Promise<void> {
-    await delay();
-    categoriesStore = categoriesStore.filter((c) => c.id !== id);
+  // Categories
+  listCategories: async (): Promise<Category[]> =>
+    (await productsHttp<ApiNamed[]>('/categories')).map(fromApiCategory),
+  createCategory: async (input: { name: string }): Promise<Category> =>
+    fromApiCategory(
+      await productsHttp<ApiNamed>('/categories', j(toApiNamed(input))),
+    ),
+  deleteCategory: async (id: number): Promise<void> => {
+    await productsHttp<void>(`/categories/${id}`, del);
   },
 
-  async listBulbTypes(): Promise<BulbType[]> {
-    await delay();
-    return bulbTypesStore.map((c) => ({ ...c }));
-  },
-  async createBulbType({ name }: { name: string }): Promise<BulbType> {
-    await delay();
-    const created: BulbType = { id: nextId(bulbTypesStore), name };
-    bulbTypesStore.push(created);
-    return { ...created };
-  },
-  async deleteBulbType(id: number): Promise<void> {
-    await delay();
-    bulbTypesStore = bulbTypesStore.filter((c) => c.id !== id);
+  // Bulb Types
+  listBulbTypes: async (): Promise<BulbType[]> =>
+    (await productsHttp<ApiNamed[]>('/bulb-types')).map(fromApiBulbType),
+  createBulbType: async (input: { name: string }): Promise<BulbType> =>
+    fromApiBulbType(
+      await productsHttp<ApiNamed>('/bulb-types', j(toApiNamed(input))),
+    ),
+  deleteBulbType: async (id: number): Promise<void> => {
+    await productsHttp<void>(`/bulb-types/${id}`, del);
   },
 
-  async listShapes(): Promise<BulbShape[]> {
-    await delay();
-    return shapesStore.map((c) => ({ ...c }));
-  },
-  async createShape({ name }: { name: string }): Promise<BulbShape> {
-    await delay();
-    const created: BulbShape = { id: nextId(shapesStore), name };
-    shapesStore.push(created);
-    return { ...created };
-  },
-  async deleteShape(id: number): Promise<void> {
-    await delay();
-    shapesStore = shapesStore.filter((c) => c.id !== id);
+  // Bulb Shapes (frontend name: shapes)
+  listShapes: async (): Promise<BulbShape[]> =>
+    (await productsHttp<ApiNamed[]>('/bulb-shapes')).map(fromApiBulbShape),
+  createShape: async (input: { name: string }): Promise<BulbShape> =>
+    fromApiBulbShape(
+      await productsHttp<ApiNamed>('/bulb-shapes', j(toApiNamed(input))),
+    ),
+  deleteShape: async (id: number): Promise<void> => {
+    await productsHttp<void>(`/bulb-shapes/${id}`, del);
   },
 
-  async listSockets(): Promise<Socket[]> {
-    await delay();
-    return socketsStore.map((c) => ({ ...c }));
-  },
-  async createSocket({ name }: { name: string }): Promise<Socket> {
-    await delay();
-    const created: Socket = { id: nextId(socketsStore), name };
-    socketsStore.push(created);
-    return { ...created };
-  },
-  async deleteSocket(id: number): Promise<void> {
-    await delay();
-    socketsStore = socketsStore.filter((c) => c.id !== id);
+  // Sockets
+  listSockets: async (): Promise<Socket[]> =>
+    (await productsHttp<ApiNamed[]>('/sockets')).map(fromApiSocket),
+  createSocket: async (input: { name: string }): Promise<Socket> =>
+    fromApiSocket(
+      await productsHttp<ApiNamed>('/sockets', j(toApiNamed(input))),
+    ),
+  deleteSocket: async (id: number): Promise<void> => {
+    await productsHttp<void>(`/sockets/${id}`, del);
   },
 
-  async listSuppliers(): Promise<Supplier[]> {
-    await delay();
-    return suppliersStore.map((c) => ({ ...c }));
-  },
-  async createSupplier({ name }: { name: string }): Promise<Supplier> {
-    await delay();
-    const created: Supplier = { id: nextId(suppliersStore), name };
-    suppliersStore.push(created);
-    return { ...created };
-  },
-  async deleteSupplier(id: number): Promise<void> {
-    await delay();
-    suppliersStore = suppliersStore.filter((c) => c.id !== id);
+  // Suppliers
+  listSuppliers: async (): Promise<Supplier[]> =>
+    (await productsHttp<ApiNamed[]>('/suppliers')).map(fromApiSupplier),
+  createSupplier: async (input: { name: string }): Promise<Supplier> =>
+    fromApiSupplier(
+      await productsHttp<ApiNamed>('/suppliers', j(toApiNamed(input))),
+    ),
+  deleteSupplier: async (id: number): Promise<void> => {
+    await productsHttp<void>(`/suppliers/${id}`, del);
   },
 
-  async listPromos(): Promise<Promo[]> {
-    await delay();
-    return promosStore.map((c) => ({ ...c }));
-  },
-  async createPromo(input: {
-    name: string;
-    discountPercent: number;
-    startsAt?: string;
-    endsAt?: string;
-  }): Promise<Promo> {
-    await delay();
-    const created: Promo = { id: nextId(promosStore), ...input };
-    promosStore.push(created);
-    return { ...created };
-  },
-  async deletePromo(id: number): Promise<void> {
-    await delay();
-    promosStore = promosStore.filter((c) => c.id !== id);
+  // Promos
+  listPromos: async (): Promise<Promo[]> =>
+    (await productsHttp<ApiPromo[]>('/promos')).map(fromApiPromo),
+  createPromo: async (input: CreatePromoInput): Promise<Promo> =>
+    fromApiPromo(
+      await productsHttp<ApiPromo>('/promos', j(toApiPromo(input))),
+    ),
+  deletePromo: async (id: number): Promise<void> => {
+    await productsHttp<void>(`/promos/${id}`, del);
   },
 };
-
-export function __resetForTests(): void {
-  categoriesStore = mockCategories.map((c) => ({ ...c }));
-  bulbTypesStore = mockBulbTypes.map((c) => ({ ...c }));
-  shapesStore = mockBulbShapes.map((c) => ({ ...c }));
-  socketsStore = mockSockets.map((c) => ({ ...c }));
-  suppliersStore = mockSuppliers.map((c) => ({ ...c }));
-  promosStore = mockPromos.map((c) => ({ ...c }));
-}

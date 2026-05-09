@@ -1,31 +1,22 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { screen } from '@testing-library/react';
+import { Route, Routes } from 'react-router-dom';
 
 import { PublicLayout } from '@/layouts/PublicLayout';
-import { CartProvider } from '@/hooks/useCart';
+import { renderWithProviders, type RootState } from '@/test/renderWithStore';
 
 const ChildStub = () => <div data-testid="child-stub">child</div>;
 
-function buildRouter() {
-  return createMemoryRouter(
-    [
-      {
-        path: '/',
-        element: <PublicLayout />,
-        children: [{ index: true, element: <ChildStub /> }],
-      },
-    ],
-    { initialEntries: ['/'] }
+function renderLayout(preloadedState?: Partial<RootState>) {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/" element={<PublicLayout />}>
+        <Route index element={<ChildStub />} />
+      </Route>
+    </Routes>,
+    { preloadedState, route: '/' },
   );
 }
-
-const renderLayout = () =>
-  render(
-    <CartProvider>
-      <RouterProvider router={buildRouter()} />
-    </CartProvider>
-  );
 
 describe('<PublicLayout>', () => {
   beforeEach(() => {
@@ -33,7 +24,7 @@ describe('<PublicLayout>', () => {
   });
 
   it('renders header nav links (/, /catalog, /about) and cart link to /cart', () => {
-    renderLayout();
+    renderLayout({ cart: { items: [] } });
 
     const home = screen.getByRole('link', { name: /Главная/i });
     expect(home).toHaveAttribute('href', '/');
@@ -50,12 +41,15 @@ describe('<PublicLayout>', () => {
     expect(cartLink).toBeTruthy();
   });
 
-  it('shows cart badge with the count when itemCount > 0 (seeded via localStorage)', () => {
-    localStorage.setItem(
-      'lm_cart',
-      JSON.stringify({ items: [{ productId: 'p-001', qty: 3 }] })
-    );
-    renderLayout();
+  it('shows cart badge with total qty from preloaded state', () => {
+    renderLayout({
+      cart: {
+        items: [
+          { productId: 'a', qty: 2, snapshot: { name: 'X', price: 1 } },
+          { productId: 'b', qty: 1, snapshot: { name: 'Y', price: 1 } },
+        ],
+      },
+    });
 
     const badge = screen.getByTestId('cart-badge');
     expect(badge).toBeInTheDocument();
@@ -63,17 +57,17 @@ describe('<PublicLayout>', () => {
   });
 
   it('does not render cart badge when itemCount is 0', () => {
-    renderLayout();
+    renderLayout({ cart: { items: [] } });
     expect(screen.queryByTestId('cart-badge')).not.toBeInTheDocument();
   });
 
   it('renders the footer', () => {
-    renderLayout();
+    renderLayout({ cart: { items: [] } });
     expect(screen.getByTestId('public-footer')).toBeInTheDocument();
   });
 
   it('renders the <Outlet /> child route content', () => {
-    renderLayout();
+    renderLayout({ cart: { items: [] } });
     expect(screen.getByTestId('child-stub')).toBeInTheDocument();
   });
 });

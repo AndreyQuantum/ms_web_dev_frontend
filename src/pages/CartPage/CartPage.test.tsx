@@ -1,73 +1,53 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
-import { CartProvider } from '@/hooks/useCart';
-import { CartPage } from '@/pages/CartPage/CartPage';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithProviders } from '@/test/renderWithStore';
+import { CartPage } from './CartPage';
 
-const fakeLookup = (id: string) => {
-  if (id === 'p-001') return { price: 100, name: 'Lamp 1', imageUrl: '/x.png' };
-  if (id === 'p-002') return { price: 50, name: 'Lamp 2', imageUrl: '/y.png' };
-  return undefined;
+const preloadedCart = {
+  cart: {
+    items: [
+      {
+        productId: 'a',
+        qty: 2,
+        snapshot: { name: 'X', price: 10, imageUrl: '/p.png' },
+      },
+    ],
+  },
 };
-
-function renderCart() {
-  return render(
-    <MemoryRouter>
-      <CartProvider getProduct={fakeLookup}>
-        <CartPage />
-      </CartProvider>
-    </MemoryRouter>,
-  );
-}
 
 describe('CartPage', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('shows "Корзина пуста" when the cart is empty', () => {
-    renderCart();
-    expect(screen.getByText(/Корзина пуста/i)).toBeInTheDocument();
+  it('renders empty state when cart has no items', () => {
+    renderWithProviders(<CartPage />, {
+      preloadedState: { cart: { items: [] } },
+    });
+    expect(screen.getByText(/корзина пуста|пусто/i)).toBeInTheDocument();
   });
 
-  it('renders 2 rows for 2 seeded items and shows formatted subtotal containing "250"', () => {
-    localStorage.setItem(
-      'lm_cart',
-      JSON.stringify({
-        items: [
-          { productId: 'p-001', qty: 2 },
-          { productId: 'p-002', qty: 1 },
-        ],
-      }),
-    );
-
-    renderCart();
-
-    const rows = screen.getAllByTestId('cart-row');
-    expect(rows).toHaveLength(2);
-    expect(screen.getByTestId('cart-subtotal').textContent).toMatch(/250/);
+  it('shows lines from preloaded cart state with correct total', () => {
+    renderWithProviders(<CartPage />, { preloadedState: preloadedCart });
+    expect(screen.getByText('X')).toBeInTheDocument();
+    // total = 2 * 10 = 20
+    expect(screen.getByTestId('cart-total').textContent).toMatch(/20/);
   });
 
-  it('clicking "remove" on a row reduces the rendered row count', async () => {
-    localStorage.setItem(
-      'lm_cart',
-      JSON.stringify({
-        items: [
-          { productId: 'p-001', qty: 2 },
-          { productId: 'p-002', qty: 1 },
-        ],
-      }),
-    );
+  it('plus button increments qty and updates total', async () => {
+    renderWithProviders(<CartPage />, { preloadedState: preloadedCart });
+    const plus = screen.getByRole('button', { name: /increment/i });
+    fireEvent.click(plus);
+    // Now qty=3, total=30
+    const total = await screen.findByTestId('cart-total');
+    expect(total.textContent).toMatch(/30/);
+  });
 
-    const user = userEvent.setup();
-    renderCart();
-
-    expect(screen.getAllByTestId('cart-row')).toHaveLength(2);
-
-    const removeButtons = screen.getAllByRole('button', { name: /Удалить/i });
-    await user.click(removeButtons[0]);
-
-    expect(screen.getAllByTestId('cart-row')).toHaveLength(1);
+  it('remove button removes the line', async () => {
+    renderWithProviders(<CartPage />, { preloadedState: preloadedCart });
+    const remove = screen.getByRole('button', { name: /удал/i });
+    fireEvent.click(remove);
+    // Goes to empty state
+    expect(await screen.findByText(/пуст/i)).toBeInTheDocument();
   });
 });

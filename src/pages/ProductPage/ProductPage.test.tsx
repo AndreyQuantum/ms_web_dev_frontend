@@ -1,145 +1,213 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import type { Product, Review } from '@/types';
-
-vi.mock('@/api/products', () => ({
-  productsApi: {
-    getById: vi.fn(),
-    list: vi.fn(),
-  },
-}));
-
-vi.mock('@/api/reviews', () => ({
-  reviewsApi: {
-    listByProduct: vi.fn(),
-    create: vi.fn(),
-  },
-}));
-
-import { productsApi } from '@/api/products';
-import { reviewsApi } from '@/api/reviews';
+import { Routes, Route } from 'react-router-dom';
+import { renderWithProviders } from '@/test/renderWithStore';
+import { makeStore } from '@/store';
 import { ProductPage } from '@/pages/ProductPage/ProductPage';
-import { CartProvider, useCart } from '@/hooks/useCart';
 
-const sampleProduct: Product = {
-  id: 'p-001',
-  name: 'LED Лампа E27 10W',
-  description: 'Описание лампы.',
-  price: 199,
-  brightnessLm: 800,
-  rating: 4.6,
-  reviewsCount: 12,
-  inStock: true,
-  stockQty: 100,
-  isArchived: false,
-  categoryId: 1,
-  bulbTypeId: 1,
-  bulbShapeId: 1,
-  socketId: 1,
-  supplierId: 1,
-  imageUrl: '/img.png',
-  createdAt: '2026-04-01T00:00:00.000Z',
-  popularity: 80,
+const apiProduct = {
+  id: 'u1',
+  title: 'Lamp',
+  description: 'D',
+  price: '12.00',
+  quantity: 5,
+  brightness_lm: 800,
+  is_archived: false,
+  available_from: null,
+  category_id: 1,
+  bulb_type_id: 1,
+  bulb_shape_id: 1,
+  socket_id: 1,
+  supplier_id: 1,
+  promo_id: null,
+  created_at: '2026-01-01T00:00:00Z',
 };
 
-const sampleReviews: Review[] = [
-  { id: 'r1', productId: 'p-001', author: 'A', rating: 5, text: 'Great', createdAt: '2026-04-01T00:00:00.000Z' },
-  { id: 'r2', productId: 'p-001', author: 'B', rating: 4, text: 'Nice', createdAt: '2026-04-02T00:00:00.000Z' },
+const apiReviews = [
+  {
+    id: 'r1',
+    product_id: 'u1',
+    text: 'good',
+    rating: 5,
+    created_at: '2026-01-02T00:00:00Z',
+  },
+  {
+    id: 'r2',
+    product_id: 'u1',
+    text: 'meh',
+    rating: 3,
+    created_at: '2026-01-03T00:00:00Z',
+  },
 ];
 
-function buildRouter(initialPath: string = '/product/p-001') {
-  return createMemoryRouter(
-    [
-      {
-        path: '/product/:id',
-        element: (
-          <CartProvider>
-            <ProductPage />
-            <CartSpy />
-          </CartProvider>
-        ),
-      },
-    ],
-    { initialEntries: [initialPath] },
+interface MockCall {
+  url: string;
+  init?: RequestInit;
+}
+
+// Wider mock-like type to bridge the vitest spyOn fetch overload signature.
+type FetchSpy = {
+  mockRestore: () => void;
+  mock: { calls: unknown[][] };
+};
+
+let calls: MockCall[];
+let fetchSpy: FetchSpy;
+
+function buildResponse(body: unknown, status = 200): Response {
+  const response = {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+    headers: new Headers(),
+  };
+  return response as unknown as Response;
+}
+
+function installRouter(handler: (url: string, init?: RequestInit) => Response) {
+  fetchSpy = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      calls.push({ url, init });
+      return handler(url, init);
+    }) as unknown as FetchSpy;
+}
+
+function defaultHandler(url: string): Response {
+  if (url.includes('/products/u1')) return buildResponse(apiProduct);
+  if (url.includes('/reviews?product_id=u1')) return buildResponse(apiReviews);
+  if (url.endsWith('/reviews') || url.match(/\/reviews$/)) {
+    // POST /reviews
+    return buildResponse({
+      id: 'r-new',
+      product_id: 'u1',
+      text: 'good',
+      rating: 5,
+      created_at: '2026-01-04T00:00:00Z',
+    });
+  }
+  return buildResponse({}, 404);
+}
+
+function renderPage() {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/product/:id" element={<ProductPage />} />
+    </Routes>,
+    {
+      route: '/product/u1',
+      store: makeStore() as unknown as ReturnType<
+        typeof import('@/test/renderWithStore').makeStore
+      >,
+    },
   );
 }
 
-function CartSpy() {
-  const { items } = useCart();
-  return (
-    <div data-testid="cart-spy">
-      {items.map(i => `${i.productId}:${i.qty}`).join(',')}
-    </div>
-  );
-}
-
-describe('ProductPage', () => {
+describe('ProductPage (Redux thunks)', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    (reviewsApi.listByProduct as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    calls = [];
+    installRouter(defaultHandler);
   });
 
-  it('shows the product name in a heading', async () => {
-    (productsApi.getById as ReturnType<typeof vi.fn>).mockResolvedValue(sampleProduct);
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
 
-    render(<RouterProvider router={buildRouter()} />);
+  it('fetches the product on mount (GET /products/u1)', async () => {
+    renderPage();
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /LED Лампа E27 10W/ }),
-      ).toBeInTheDocument();
+        calls.some((c) => /\/products\/u1$/.test(c.url)),
+      ).toBe(true);
     });
   });
 
-  it('clicking "+" twice and "В корзину" adds the product with qty=3', async () => {
-    (productsApi.getById as ReturnType<typeof vi.fn>).mockResolvedValue(sampleProduct);
+  it('renders product name and details', async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: /Lamp/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Яркость:\s*800/)).toBeInTheDocument();
+  });
+
+  it('Reviews tab fetches reviews and renders 2 anonymous items', async () => {
     const user = userEvent.setup();
+    renderPage();
 
-    render(<RouterProvider router={buildRouter()} />);
-
-    await screen.findByRole('heading', { name: /LED Лампа E27 10W/ });
-
-    const plus = await screen.findByRole('button', { name: /^\+$/ });
-    await user.click(plus);
-    await user.click(plus);
-
-    const addBtn = screen.getByRole('button', { name: /В корзину/ });
-    await user.click(addBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('cart-spy').textContent).toBe('p-001:3');
-    });
-  });
-
-  it('shows "Товар не найден" when productsApi.getById rejects', async () => {
-    (productsApi.getById as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('Not found'),
-    );
-
-    render(<RouterProvider router={buildRouter()} />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Товар не найден/i)).toBeInTheDocument();
-    });
-  });
-
-  it('clicking the "Отзывы" tab shows the reviews list (2 items)', async () => {
-    (productsApi.getById as ReturnType<typeof vi.fn>).mockResolvedValue(sampleProduct);
-    (reviewsApi.listByProduct as ReturnType<typeof vi.fn>).mockResolvedValue(sampleReviews);
-    const user = userEvent.setup();
-
-    render(<RouterProvider router={buildRouter()} />);
-
-    await screen.findByRole('heading', { name: /LED Лампа E27 10W/ });
+    await screen.findByRole('heading', { name: /Lamp/ });
 
     const reviewsTab = await screen.findByRole('tab', { name: /Отзывы/ });
     await user.click(reviewsTab);
 
     await waitFor(() => {
-      expect(screen.getByText(/Great/)).toBeInTheDocument();
-      expect(screen.getByText(/Nice/)).toBeInTheDocument();
+      expect(
+        calls.some((c) => /\/reviews\?product_id=u1/.test(c.url)),
+      ).toBe(true);
     });
+
+    expect(await screen.findByText(/good/)).toBeInTheDocument();
+    expect(screen.getByText(/meh/)).toBeInTheDocument();
+
+    const anon = screen.getAllByText('Аноним');
+    expect(anon).toHaveLength(2);
+  });
+
+  it('review form has NO author input', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('heading', { name: /Lamp/ });
+
+    const reviewsTab = await screen.findByRole('tab', { name: /Отзывы/ });
+    await user.click(reviewsTab);
+
+    await screen.findByText(/good/);
+
+    expect(screen.queryByLabelText(/имя|author/i)).toBeNull();
+  });
+
+  it('submitting valid review POSTs /reviews without author key', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('heading', { name: /Lamp/ });
+
+    const reviewsTab = await screen.findByRole('tab', { name: /Отзывы/ });
+    await user.click(reviewsTab);
+
+    await screen.findByText(/good/);
+
+    const textarea = screen.getByLabelText(/Текст/);
+    await user.type(textarea, 'good');
+
+    const submit = screen.getByRole('button', { name: /Отправить отзыв/ });
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (c) => /\/reviews$/.test(c.url) && c.init?.method === 'POST',
+        ),
+      ).toBe(true);
+    });
+
+    const postCall = calls.find(
+      (c) => /\/reviews$/.test(c.url) && c.init?.method === 'POST',
+    )!;
+    const body = JSON.parse(String(postCall.init!.body));
+    expect(body).not.toHaveProperty('author');
+    expect(body.product_id).toBe('u1');
+    expect(body.text).toBe('good');
+    expect(body.rating).toBe(5);
   });
 });

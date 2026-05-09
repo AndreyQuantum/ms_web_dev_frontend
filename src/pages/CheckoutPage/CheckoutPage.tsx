@@ -1,20 +1,24 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { ordersApi } from '@/api/orders';
 import { useCart } from '@/hooks/useCart';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createOrder } from '@/store/slices/ordersSlice';
 import { Button } from '@/components/Button/Button';
-import type { DeliveryMethod, OrderItem } from '@/types';
+import type { DeliveryMethod } from '@/types';
 
 export function CheckoutPage() {
-  const { items, getProduct, clear } = useCart();
+  const { items, clear } = useCart();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const orderStatus = useAppSelector((s) => s.orders.status);
+  const orderError = useAppSelector((s) => s.orders.error);
 
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [comment, setComment] = useState('');
   const [delivery, setDelivery] = useState<DeliveryMethod>('pickup');
   const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   if (items.length === 0) {
     return <Navigate to="/cart" replace />;
@@ -36,35 +40,44 @@ export function CheckoutPage() {
     return next;
   };
 
+  const isSubmitting = orderStatus === 'creating';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (errs.email || errs.phone) return;
 
-    const orderItems: OrderItem[] = items.map(it => {
-      const p = getProduct(it.productId);
-      return {
-        productId: it.productId,
-        name: p?.name ?? it.productId,
-        price: p?.price ?? 0,
-        qty: it.qty,
-      };
-    });
-
-    setSubmitting(true);
+    setLocalError(null);
     try {
-      const created = await ordersApi.create({
-        customer: { email, phone, comment: comment || undefined },
-        deliveryMethod: delivery,
-        items: orderItems,
-      });
+      const order = await dispatch(
+        createOrder({
+          email,
+          phone,
+          deliveryMethod: delivery,
+          comment: comment || undefined,
+          items: items.map((it) => ({
+            productId: it.productId,
+            qty: it.qty,
+            price: it.snapshot?.price ?? 0,
+            name: it.snapshot?.name ?? '',
+          })),
+        }),
+      ).unwrap();
       clear();
-      navigate('/order-success', { state: { orderId: created.id } });
-    } catch {
-      setSubmitting(false);
+      navigate('/order-success', { state: { orderId: order.id } });
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Не удалось оформить заказ';
+      setLocalError(msg);
     }
   };
+
+  const errorMessage = localError ?? orderError;
 
   return (
     <div className="checkout-page">
@@ -77,7 +90,7 @@ export function CheckoutPage() {
             id="checkout-email"
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
           />
           {errors.email ? (
             <span role="alert" className="form-error">
@@ -92,7 +105,7 @@ export function CheckoutPage() {
             id="checkout-phone"
             type="tel"
             value={phone}
-            onChange={e => setPhone(e.target.value)}
+            onChange={(e) => setPhone(e.target.value)}
           />
           {errors.phone ? (
             <span role="alert" className="form-error">
@@ -106,7 +119,7 @@ export function CheckoutPage() {
           <textarea
             id="checkout-comment"
             value={comment}
-            onChange={e => setComment(e.target.value)}
+            onChange={(e) => setComment(e.target.value)}
           />
         </div>
 
@@ -144,7 +157,13 @@ export function CheckoutPage() {
           </label>
         </fieldset>
 
-        <Button type="submit" loading={submitting}>
+        {errorMessage ? (
+          <div role="alert" className="form-error checkout-error">
+            Ошибка: {errorMessage}
+          </div>
+        ) : null}
+
+        <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
           Оформить заказ
         </Button>
       </form>

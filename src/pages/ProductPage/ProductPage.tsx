@@ -1,77 +1,95 @@
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { productsApi } from '@/api/products';
-import { reviewsApi } from '@/api/reviews';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchProductById } from '@/store/slices/productsSlice';
+import { fetchReviews, createReview } from '@/store/slices/reviewsSlice';
 import { Stars } from '@/components/Stars/Stars';
 import { Button } from '@/components/Button/Button';
 import { useCart } from '@/hooks/useCart';
 import { formatPrice } from '@/utils/format';
-import type { Product, Review } from '@/types';
 
 type Tab = 'specs' | 'description' | 'reviews';
 
 export function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const { addItem } = useCart();
+  const dispatch = useAppDispatch();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const product = useAppSelector((s) =>
+    id ? s.products.currentById[id] : undefined,
+  );
+  const productStatus = useAppSelector((s) => s.products.currentStatus);
+  const productError = useAppSelector((s) => s.products.currentError);
+
+  const reviewBucket = useAppSelector((s) =>
+    id ? s.reviews.byProductId[id] : undefined,
+  );
+  const reviews = reviewBucket?.items ?? [];
+  const reviewsStatus = reviewBucket?.status ?? 'idle';
+
   const [qty, setQty] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [tab, setTab] = useState<Tab>('specs');
 
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewAuthor, setReviewAuthor] = useState('');
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
+  const [reviewSubmitError, setReviewSubmitError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
-    if (!id) return;
-    setError(null);
-    productsApi
-      .getById(id)
-      .then(p => setProduct(p))
-      .catch(() => setError('Товар не найден'));
-  }, [id]);
+    if (id) dispatch(fetchProductById(id));
+  }, [dispatch, id]);
 
   useEffect(() => {
-    if (tab !== 'reviews' || !id) return;
-    reviewsApi
-      .listByProduct(id)
-      .then(setReviews)
-      .catch(() => setReviews([]));
-  }, [tab, id]);
+    if (id && tab === 'reviews' && reviewsStatus === 'idle') {
+      dispatch(fetchReviews(id));
+    }
+  }, [dispatch, id, tab, reviewsStatus]);
 
-  if (error) {
+  if (productStatus === 'error' || productError) {
     return <div className="product-page-error">Товар не найден</div>;
   }
 
-  if (!product) {
+  if (!product || productStatus === 'loading' || productStatus === 'idle') {
     return <div className="product-page-loading">Загрузка...</div>;
   }
 
-  const thumbs = product.thumbnails && product.thumbnails.length > 0
-    ? product.thumbnails
-    : [product.imageUrl];
+  const thumbs =
+    product.thumbnails && product.thumbnails.length > 0
+      ? product.thumbnails
+      : [product.imageUrl];
   const mainSrc = thumbs[activeImage] ?? product.imageUrl;
 
   const handleAdd = () => {
-    addItem(product.id, qty);
+    addItem(product.id, qty, {
+      name: product.name,
+      price: product.price,
+      oldPrice: product.oldPrice,
+      imageUrl: product.imageUrl,
+    });
   };
 
-  const handleSubmitReview = async (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: FormEvent) => {
     e.preventDefault();
-    if (!id || !reviewAuthor.trim() || !reviewText.trim()) return;
-    const created = await reviewsApi.create({
-      productId: id,
-      author: reviewAuthor,
-      rating: reviewRating,
-      text: reviewText,
-    });
-    setReviews(prev => [...prev, created]);
-    setReviewAuthor('');
-    setReviewText('');
-    setReviewRating(5);
+    if (!id || !reviewText.trim()) return;
+    setReviewSubmitError(null);
+    try {
+      await dispatch(
+        createReview({
+          productId: id,
+          rating: reviewRating,
+          text: reviewText,
+        }),
+      ).unwrap();
+      setReviewText('');
+      setReviewRating(5);
+    } catch (err) {
+      setReviewSubmitError(
+        err instanceof Error ? err.message : 'Не удалось отправить отзыв',
+      );
+    }
   };
 
   return (
@@ -118,11 +136,11 @@ export function ProductPage() {
           <div className="product-price">{formatPrice(product.price)}</div>
 
           <div className="product-qty">
-            <button type="button" onClick={() => setQty(q => Math.max(1, q - 1))}>
+            <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))}>
               -
             </button>
             <span data-testid="product-qty">{qty}</span>
-            <button type="button" onClick={() => setQty(q => q + 1)}>
+            <button type="button" onClick={() => setQty((q) => q + 1)}>
               +
             </button>
           </div>
@@ -173,7 +191,7 @@ export function ProductPage() {
           {tab === 'reviews' ? (
             <div className="product-reviews">
               <ul>
-                {reviews.map(r => (
+                {reviews.map((r) => (
                   <li key={r.id} className="product-review">
                     <strong>{r.author}</strong>
                     <Stars value={r.rating} />
@@ -184,14 +202,6 @@ export function ProductPage() {
 
               <form onSubmit={handleSubmitReview} className="review-form">
                 <label>
-                  Имя
-                  <input
-                    type="text"
-                    value={reviewAuthor}
-                    onChange={e => setReviewAuthor(e.target.value)}
-                  />
-                </label>
-                <label>
                   Оценка
                   <Stars value={reviewRating} onChange={setReviewRating} />
                 </label>
@@ -199,10 +209,15 @@ export function ProductPage() {
                   Текст
                   <textarea
                     value={reviewText}
-                    onChange={e => setReviewText(e.target.value)}
+                    onChange={(e) => setReviewText(e.target.value)}
                   />
                 </label>
                 <Button type="submit">Отправить отзыв</Button>
+                {reviewSubmitError ? (
+                  <div role="alert" className="review-form-error">
+                    {reviewSubmitError}
+                  </div>
+                ) : null}
               </form>
             </div>
           ) : null}
